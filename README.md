@@ -4,7 +4,9 @@
 
 A custom Lovelace card for Home Assistant that displays sunset quality predictions from [sunset-predictor.com](https://sunset-predictor.com/).
 
-![Score: 74/100 — High](https://img.shields.io/badge/score-74%2F100-f97316?style=for-the-badge)
+| Minimal | With weather details |
+|:---:|:---:|
+| ![Minimal view](images/sunset-predictor-card-mini.png) | ![Full view](images/sunset-predictor-card-full.png) |
 
 ## Prerequisites
 
