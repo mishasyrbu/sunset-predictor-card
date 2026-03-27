@@ -107,6 +107,27 @@ npm run watch       # Watch mode for development
 
 The bundled card is output to `dist/sunset-predictor-card.js`.
 
+### Testing on a local Home Assistant
+
+1. Build the card:
+   ```bash
+   npm run build
+   ```
+
+2. Copy the built file to your HA server via SCP:
+   ```bash
+   scp dist/sunset-predictor-card.js user@your-ha-server:/path/to/homeassistant/config/www/sunset-predictor-card.js
+   ```
+
+3. Register the resource in HA (first time only):
+   - Go to **Settings → Dashboards → Resources** (or three-dot menu → Resources)
+   - Add resource: `/local/sunset-predictor-card.js` with type **JavaScript Module**
+
+4. Add the card to a dashboard:
+   - Edit a dashboard → **Add Card** → **Manual** → paste your card YAML config
+
+5. After rebuilding, **hard-refresh** the browser (`Ctrl+Shift+R` / `Cmd+Shift+R`) — HA aggressively caches JS resources. If caching is stubborn, append a query string to the resource URL: `/local/sunset-predictor-card.js?v=2`
+
 ## License
 
 MIT
