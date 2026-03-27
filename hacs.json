@@ -2,5 +2,5 @@
   "name": "Sunset Predictor Card",
   "render_readme": true,
   "homeassistant": "2024.1.0",
-  "filename": "sunset-predictor-card.js"
+  "filename": "dist/sunset-predictor-card.js"
 }
