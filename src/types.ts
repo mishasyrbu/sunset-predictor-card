@@ -1,3 +1,13 @@
+export interface HassEntity {
+  state: string;
+  attributes: Record<string, unknown>;
+  last_updated?: string;
+}
+
+export interface HomeAssistant {
+  states: Record<string, HassEntity | undefined>;
+}
+
 export const WEATHER_ITEMS = [
   "clouds",
   "humidity",
@@ -26,6 +36,7 @@ export interface CardConfig {
 }
 
 export interface SunsetPredictionAttributes {
+  [key: string]: unknown;
   label: string;
   explanation: string;
   confidence: string;
@@ -115,6 +126,40 @@ export const AQI_LABELS: Record<number, string> = {
   4: "Poor",
   5: "Very Poor",
 };
+
+export function formatWeatherValue(
+  key: WeatherItemKey,
+  raw: number | null | undefined,
+  imperial: boolean
+): string {
+  if (raw == null) return "—";
+  switch (key) {
+    case "clouds":
+      return `${raw}%`;
+    case "humidity":
+      return `${raw}%`;
+    case "wind":
+      return imperial
+        ? `${(raw * 2.237).toFixed(1)} mph`
+        : `${raw.toFixed(1)} m/s`;
+    case "temperature":
+      return imperial
+        ? `${(raw * 9 / 5 + 32).toFixed(1)}°F`
+        : `${raw.toFixed(1)}°C`;
+    case "visibility":
+      return imperial
+        ? `${(raw / 1609.34).toFixed(1)} mi`
+        : `${(raw / 1000).toFixed(1)} km`;
+    case "rain":
+      return `${raw}%`;
+    case "pressure":
+      return imperial
+        ? `${(raw * 0.02953).toFixed(2)} inHg`
+        : `${raw} hPa`;
+    case "aqi":
+      return `${raw}/5`;
+  }
+}
 
 export const WEATHER_ITEM_LABELS: Record<WeatherItemKey, string> = {
   clouds: "Clouds",

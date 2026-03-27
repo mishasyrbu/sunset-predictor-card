@@ -2,14 +2,14 @@ import { LitElement, html, nothing, TemplateResult, svg } from "lit";
 import { property, state } from "lit/decorators.js";
 import {
   CardConfig,
+  HomeAssistant,
   SunsetPredictionAttributes,
   DEFAULT_CONFIG,
   DEFAULT_WEATHER_ITEMS,
   AQI_LABELS,
   getPalette,
   WeatherItemKey,
-  UnitSystem,
-  TimeFormat,
+  formatWeatherValue,
 } from "./types";
 import { cardStyles } from "./styles";
 import "./editor";
@@ -17,28 +17,27 @@ import "./editor";
 const CIRCLE_RADIUS = 52;
 const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
 
-function relativeTime(isoString: string): string {
-  const now = Date.now();
+function relativeTime(isoString: string, _tick: number): string {
   const then = new Date(isoString).getTime();
   if (Number.isNaN(then)) return "";
-  const diffSec = Math.round((now - then) / 1000);
+  const diffSec = Math.floor((_tick - then) / 1000);
   if (diffSec < 10) return "just now";
   if (diffSec < 60) return `${diffSec}s ago`;
-  const diffMin = Math.round(diffSec / 60);
+  const diffMin = Math.floor(diffSec / 60);
   if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.round(diffMin / 60);
+  const diffHr = Math.floor(diffMin / 60);
   if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.round(diffHr / 24);
+  const diffDay = Math.floor(diffHr / 24);
   return `${diffDay}d ago`;
 }
 
 let _instanceCounter = 0;
 
 class SunsetPredictorCard extends LitElement {
-  @property({ attribute: false }) public hass!: any;
+  @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: CardConfig;
   @state() private _now = Date.now();
-  private _instanceId = `sp-${_instanceCounter++}`;
+  private _instanceId = `sp-${_instanceCounter++}-${Math.random().toString(36).slice(2, 7)}`;
   private _tickInterval?: ReturnType<typeof setInterval>;
 
   static getConfigElement(): HTMLElement {
@@ -144,9 +143,7 @@ class SunsetPredictorCard extends LitElement {
     const title = this._config.title || "Sunset Prediction";
     const gradId = `${this._instanceId}-grad`;
     const filtId = `${this._instanceId}-glow`;
-    // reference _now to trigger re-render on tick
-    void this._now;
-    const updatedAgo = lastUpdated ? relativeTime(lastUpdated) : "";
+    const updatedAgo = lastUpdated ? relativeTime(lastUpdated, this._now) : "";
     return html`
       <div class="header">
         <div class="header-left">
@@ -284,20 +281,13 @@ class SunsetPredictorCard extends LitElement {
   private _renderWeatherGrid(
     attrs: SunsetPredictionAttributes
   ): TemplateResult {
+    const imperial = this._config.units === "imperial";
+    const fmt = (key: WeatherItemKey, raw: number | null | undefined) =>
+      formatWeatherValue(key, raw, imperial);
+
     const windDirStyle = attrs.wind_degree != null
       ? `transform: rotate(${attrs.wind_degree}deg)`
       : "";
-
-    const imperial = this._config.units === "imperial";
-
-    const fmtTemp = (c: number): string =>
-      imperial ? `${(c * 9 / 5 + 32).toFixed(1)}°F` : `${c.toFixed(1)}°C`;
-    const fmtWind = (ms: number): string =>
-      imperial ? `${(ms * 2.237).toFixed(1)} mph` : `${ms} m/s`;
-    const fmtVis = (m: number): string =>
-      imperial ? `${(m / 1609.34).toFixed(1)} mi` : `${(m / 1000).toFixed(1)} km`;
-    const fmtPressure = (hpa: number): string =>
-      imperial ? `${(hpa * 0.02953).toFixed(2)} inHg` : `${hpa} hPa`;
 
     const allItems: {
       key: WeatherItemKey;
@@ -307,68 +297,25 @@ class SunsetPredictorCard extends LitElement {
       sub?: unknown;
       color: string;
     }[] = [
+      { key: "clouds", icon: "mdi:cloud", label: "Clouds", value: fmt("clouds", attrs.cloud_cover), color: "var(--weather-clouds, #93c5fd)" },
+      { key: "humidity", icon: "mdi:water-percent", label: "Humidity", value: fmt("humidity", attrs.humidity), color: "var(--weather-humidity, #60a5fa)" },
       {
-        key: "clouds",
-        icon: "mdi:cloud",
-        label: "Clouds",
-        value: attrs.cloud_cover != null ? `${attrs.cloud_cover}%` : "—",
-        color: "#93c5fd",
-      },
-      {
-        key: "humidity",
-        icon: "mdi:water-percent",
-        label: "Humidity",
-        value: attrs.humidity != null ? `${attrs.humidity}%` : "—",
-        color: "#60a5fa",
-      },
-      {
-        key: "wind",
-        icon: "mdi:weather-windy",
-        label: "Wind",
-        value: attrs.wind_speed != null ? fmtWind(attrs.wind_speed) : "—",
+        key: "wind", icon: "mdi:weather-windy", label: "Wind",
+        value: fmt("wind", attrs.wind_speed),
         sub: attrs.wind_degree != null
           ? html`<span class="wind-dir" style="${windDirStyle}">▲</span> ${attrs.wind_degree}°`
           : nothing,
-        color: "#d1d5db",
+        color: "var(--weather-wind, #d1d5db)",
       },
+      { key: "temperature", icon: "mdi:thermometer", label: "Temp", value: fmt("temperature", attrs.temperature), color: "var(--weather-temp, #fbbf24)" },
+      { key: "visibility", icon: "mdi:eye", label: "Visibility", value: fmt("visibility", attrs.visibility), color: "var(--weather-visibility, #2dd4bf)" },
+      { key: "rain", icon: "mdi:weather-rainy", label: "Rain", value: fmt("rain", attrs.rain_probability), color: "var(--weather-rain, #818cf8)" },
+      { key: "pressure", icon: "mdi:gauge", label: "Pressure", value: fmt("pressure", attrs.pressure), color: "var(--weather-pressure, #a78bfa)" },
       {
-        key: "temperature",
-        icon: "mdi:thermometer",
-        label: "Temp",
-        value: attrs.temperature != null ? fmtTemp(attrs.temperature) : "—",
-        color: "#fbbf24",
-      },
-      {
-        key: "visibility",
-        icon: "mdi:eye",
-        label: "Visibility",
-        value: attrs.visibility != null ? fmtVis(attrs.visibility) : "—",
-        color: "#2dd4bf",
-      },
-      {
-        key: "rain",
-        icon: "mdi:weather-rainy",
-        label: "Rain",
-        value:
-          attrs.rain_probability != null
-            ? `${attrs.rain_probability}%`
-            : "—",
-        color: "#818cf8",
-      },
-      {
-        key: "pressure",
-        icon: "mdi:gauge",
-        label: "Pressure",
-        value: attrs.pressure != null ? fmtPressure(attrs.pressure) : "—",
-        color: "#a78bfa",
-      },
-      {
-        key: "aqi",
-        icon: "mdi:leaf",
-        label: "AQI",
-        value: attrs.aqi != null ? `${attrs.aqi}/5` : "—",
+        key: "aqi", icon: "mdi:leaf", label: "AQI",
+        value: fmt("aqi", attrs.aqi),
         sub: attrs.aqi != null ? (AQI_LABELS[attrs.aqi] || "") : nothing,
-        color: "#34d399",
+        color: "var(--weather-aqi, #34d399)",
       },
     ];
 

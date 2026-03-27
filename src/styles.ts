@@ -41,11 +41,16 @@ export const cardStyles = css`
     flex-direction: column;
     align-items: flex-end;
     gap: 2px;
+    min-width: 0;
   }
 
   .header .location {
     font-size: 12px;
     color: var(--secondary-text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
   }
 
   .header .updated-ago {
@@ -235,6 +240,7 @@ export const cardStyles = css`
     text-align: center;
     padding: 12px 6px;
     border-radius: 12px;
+    min-width: 0;
     background: var(--card-background-color, rgba(255, 255, 255, 0.05));
     border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.05));
     transition: background 0.2s ease;
@@ -277,6 +283,10 @@ export const cardStyles = css`
     font-weight: 700;
     color: var(--primary-text-color);
     line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
   }
 
   .weather-card .weather-sub {

@@ -1,7 +1,8 @@
-import { LitElement, html, css, TemplateResult, CSSResultGroup } from "lit";
+import { LitElement, html, nothing, css, TemplateResult, CSSResultGroup } from "lit";
 import { property, state } from "lit/decorators.js";
 import {
   CardConfig,
+  HomeAssistant,
   DEFAULT_CONFIG,
   DEFAULT_WEATHER_ITEMS,
   WEATHER_ITEMS,
@@ -42,7 +43,7 @@ const BASE_SCHEMA = [
 ];
 
 export class SunsetPredictorCardEditor extends LitElement {
-  @property({ attribute: false }) public hass: any;
+  @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: CardConfig;
 
   setConfig(config: CardConfig): void {
@@ -123,11 +124,11 @@ export class SunsetPredictorCardEditor extends LitElement {
               </div>
             </div>
           `
-        : ""}
+        : nothing}
     `;
   }
 
-  private _computeLabel(schema: { name: string }): string {
+  private _computeLabel = (schema: { name: string }): string => {
     const labels: Record<string, string> = {
       entity: "Entity",
       title: "Title (optional)",
@@ -137,7 +138,7 @@ export class SunsetPredictorCardEditor extends LitElement {
       show_explanation: "Show explanation",
     };
     return labels[schema.name] || schema.name;
-  }
+  };
 
   static get styles(): CSSResultGroup {
     return css`
