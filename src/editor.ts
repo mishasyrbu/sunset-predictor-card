@@ -12,6 +12,31 @@ import {
 const BASE_SCHEMA = [
   { name: "entity", selector: { entity: { domain: "sensor" } } },
   { name: "title", selector: { text: {} } },
+  {
+    name: "units",
+    selector: {
+      select: {
+        options: [
+          { value: "metric", label: "Metric (°C, m/s, km)" },
+          { value: "imperial", label: "Imperial (°F, mph, mi)" },
+        ],
+        mode: "dropdown",
+      },
+    },
+  },
+  {
+    name: "time_format",
+    selector: {
+      select: {
+        options: [
+          { value: "auto", label: "Auto (browser default)" },
+          { value: "12h", label: "12-hour (AM/PM)" },
+          { value: "24h", label: "24-hour" },
+        ],
+        mode: "dropdown",
+      },
+    },
+  },
   { name: "show_explanation", selector: { boolean: {} } },
   { name: "show_weather_details", selector: { boolean: {} } },
 ];
@@ -56,6 +81,8 @@ export class SunsetPredictorCardEditor extends LitElement {
     const data = {
       show_weather_details: DEFAULT_CONFIG.show_weather_details,
       show_explanation: DEFAULT_CONFIG.show_explanation,
+      units: DEFAULT_CONFIG.units,
+      time_format: DEFAULT_CONFIG.time_format,
       ...this._config,
     };
 
@@ -104,6 +131,8 @@ export class SunsetPredictorCardEditor extends LitElement {
     const labels: Record<string, string> = {
       entity: "Entity",
       title: "Title (optional)",
+      units: "Units",
+      time_format: "Time format",
       show_weather_details: "Show weather details",
       show_explanation: "Show explanation",
     };

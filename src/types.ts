@@ -11,12 +11,17 @@ export const WEATHER_ITEMS = [
 
 export type WeatherItemKey = (typeof WEATHER_ITEMS)[number];
 
+export type UnitSystem = "metric" | "imperial";
+export type TimeFormat = "12h" | "24h" | "auto";
+
 export interface CardConfig {
   type: string;
   entity: string;
   title?: string;
   show_weather_details?: boolean;
   show_explanation?: boolean;
+  units?: UnitSystem;
+  time_format?: TimeFormat;
   weather_items?: Partial<Record<WeatherItemKey, boolean>>;
 }
 
@@ -56,6 +61,8 @@ export const DEFAULT_WEATHER_ITEMS: Record<WeatherItemKey, boolean> = {
 export const DEFAULT_CONFIG: Partial<CardConfig> = {
   show_weather_details: true,
   show_explanation: true,
+  units: "metric",
+  time_format: "auto",
   weather_items: { ...DEFAULT_WEATHER_ITEMS },
 };
 

@@ -8,6 +8,8 @@ import {
   AQI_LABELS,
   getPalette,
   WeatherItemKey,
+  UnitSystem,
+  TimeFormat,
 } from "./types";
 import { cardStyles } from "./styles";
 import "./editor";
@@ -15,12 +17,29 @@ import "./editor";
 const CIRCLE_RADIUS = 52;
 const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
 
+function relativeTime(isoString: string): string {
+  const now = Date.now();
+  const then = new Date(isoString).getTime();
+  if (Number.isNaN(then)) return "";
+  const diffSec = Math.round((now - then) / 1000);
+  if (diffSec < 10) return "just now";
+  if (diffSec < 60) return `${diffSec}s ago`;
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.round(diffHr / 24);
+  return `${diffDay}d ago`;
+}
+
 let _instanceCounter = 0;
 
 class SunsetPredictorCard extends LitElement {
   @property({ attribute: false }) public hass!: any;
   @state() private _config!: CardConfig;
+  @state() private _now = Date.now();
   private _instanceId = `sp-${_instanceCounter++}`;
+  private _tickInterval?: ReturnType<typeof setInterval>;
 
   static getConfigElement(): HTMLElement {
     return document.createElement("sunset-predictor-card-editor");
@@ -44,6 +63,21 @@ class SunsetPredictorCard extends LitElement {
     return size;
   }
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._tickInterval = setInterval(() => {
+      this._now = Date.now();
+    }, 30000);
+  }
+
+  disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this._tickInterval) {
+      clearInterval(this._tickInterval);
+      this._tickInterval = undefined;
+    }
+  }
+
   static styles = cardStyles;
 
   protected render(): TemplateResult {
@@ -62,10 +96,12 @@ class SunsetPredictorCard extends LitElement {
       `;
     }
 
+    const lastUpdated = stateObj.last_updated as string | undefined;
+
     if (stateObj.state === "unavailable" || stateObj.state === "unknown") {
       return html`
         <ha-card>
-          ${this._renderHeader(stateObj.attributes)}
+          ${this._renderHeader(stateObj.attributes, lastUpdated)}
           <div class="unavailable">Data currently unavailable</div>
         </ha-card>
       `;
@@ -75,7 +111,7 @@ class SunsetPredictorCard extends LitElement {
     if (Number.isNaN(score)) {
       return html`
         <ha-card>
-          ${this._renderHeader(stateObj.attributes)}
+          ${this._renderHeader(stateObj.attributes, lastUpdated)}
           <div class="unavailable">Invalid score data</div>
         </ha-card>
       `;
@@ -84,7 +120,7 @@ class SunsetPredictorCard extends LitElement {
 
     return html`
       <ha-card>
-        ${this._renderHeader(attrs)}
+        ${this._renderHeader(attrs, lastUpdated)}
         ${this._renderScore(score, attrs)}
         ${this._config.show_explanation !== false
           ? this._renderExplanation(attrs.explanation)
@@ -102,11 +138,15 @@ class SunsetPredictorCard extends LitElement {
   }
 
   private _renderHeader(
-    attrs: Partial<SunsetPredictionAttributes>
+    attrs: Partial<SunsetPredictionAttributes>,
+    lastUpdated?: string
   ): TemplateResult {
     const title = this._config.title || "Sunset Prediction";
     const gradId = `${this._instanceId}-grad`;
     const filtId = `${this._instanceId}-glow`;
+    // reference _now to trigger re-render on tick
+    void this._now;
+    const updatedAgo = lastUpdated ? relativeTime(lastUpdated) : "";
     return html`
       <div class="header">
         <div class="header-left">
@@ -136,9 +176,14 @@ class SunsetPredictorCard extends LitElement {
           `}
           <span class="title">${title}</span>
         </div>
-        ${attrs.location
-          ? html`<span class="location">${attrs.location}</span>`
-          : nothing}
+        <div class="header-right">
+          ${attrs.location
+            ? html`<span class="location">${attrs.location}</span>`
+            : nothing}
+          ${updatedAgo
+            ? html`<span class="updated-ago">${updatedAgo}</span>`
+            : nothing}
+        </div>
       </div>
     `;
   }
@@ -187,14 +232,18 @@ class SunsetPredictorCard extends LitElement {
 
   private _renderTimes(attrs: SunsetPredictionAttributes): TemplateResult {
     const tz = attrs.timezone || undefined;
+    const timeFmt = this._config.time_format || "auto";
     const fmt = (iso: string): string => {
       if (!iso) return "--:--";
       try {
-        return new Date(iso).toLocaleTimeString([], {
+        const opts: Intl.DateTimeFormatOptions = {
           hour: "2-digit",
           minute: "2-digit",
           timeZone: tz,
-        });
+        };
+        if (timeFmt === "12h") opts.hour12 = true;
+        else if (timeFmt === "24h") opts.hour12 = false;
+        return new Date(iso).toLocaleTimeString([], opts);
       } catch {
         return "--:--";
       }
@@ -239,6 +288,17 @@ class SunsetPredictorCard extends LitElement {
       ? `transform: rotate(${attrs.wind_degree}deg)`
       : "";
 
+    const imperial = this._config.units === "imperial";
+
+    const fmtTemp = (c: number): string =>
+      imperial ? `${(c * 9 / 5 + 32).toFixed(1)}°F` : `${c.toFixed(1)}°C`;
+    const fmtWind = (ms: number): string =>
+      imperial ? `${(ms * 2.237).toFixed(1)} mph` : `${ms} m/s`;
+    const fmtVis = (m: number): string =>
+      imperial ? `${(m / 1609.34).toFixed(1)} mi` : `${(m / 1000).toFixed(1)} km`;
+    const fmtPressure = (hpa: number): string =>
+      imperial ? `${(hpa * 0.02953).toFixed(2)} inHg` : `${hpa} hPa`;
+
     const allItems: {
       key: WeatherItemKey;
       icon: string;
@@ -265,7 +325,7 @@ class SunsetPredictorCard extends LitElement {
         key: "wind",
         icon: "mdi:weather-windy",
         label: "Wind",
-        value: attrs.wind_speed != null ? `${attrs.wind_speed} m/s` : "—",
+        value: attrs.wind_speed != null ? fmtWind(attrs.wind_speed) : "—",
         sub: attrs.wind_degree != null
           ? html`<span class="wind-dir" style="${windDirStyle}">▲</span> ${attrs.wind_degree}°`
           : nothing,
@@ -275,20 +335,14 @@ class SunsetPredictorCard extends LitElement {
         key: "temperature",
         icon: "mdi:thermometer",
         label: "Temp",
-        value:
-          attrs.temperature != null
-            ? `${attrs.temperature.toFixed(1)}°C`
-            : "—",
+        value: attrs.temperature != null ? fmtTemp(attrs.temperature) : "—",
         color: "#fbbf24",
       },
       {
         key: "visibility",
         icon: "mdi:eye",
         label: "Visibility",
-        value:
-          attrs.visibility != null
-            ? `${(attrs.visibility / 1000).toFixed(1)} km`
-            : "—",
+        value: attrs.visibility != null ? fmtVis(attrs.visibility) : "—",
         color: "#2dd4bf",
       },
       {
@@ -305,7 +359,7 @@ class SunsetPredictorCard extends LitElement {
         key: "pressure",
         icon: "mdi:gauge",
         label: "Pressure",
-        value: attrs.pressure != null ? `${attrs.pressure} hPa` : "—",
+        value: attrs.pressure != null ? fmtPressure(attrs.pressure) : "—",
         color: "#a78bfa",
       },
       {

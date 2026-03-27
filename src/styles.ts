@@ -36,9 +36,22 @@ export const cardStyles = css`
     color: var(--primary-text-color);
   }
 
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+
   .header .location {
     font-size: 12px;
     color: var(--secondary-text-color);
+  }
+
+  .header .updated-ago {
+    font-size: 10px;
+    color: var(--secondary-text-color);
+    opacity: 0.7;
   }
 
   /* Score Section */
