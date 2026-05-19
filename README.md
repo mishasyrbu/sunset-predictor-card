@@ -10,7 +10,7 @@ A custom Lovelace card for Home Assistant that displays sunset quality predictio
 
 ## Prerequisites
 
-This card requires the **Sunset Predictor integration** to be installed first: [ha-sunset-predictor](https://github.com/sunset-predictor/ha-sunset-predictor)
+This card requires the **Sunset Predictor integration** to be installed first: [ha-sunset-predictor](https://github.com/mishasyrbu/ha-sunset-predictor)
 
 ## Features
 
